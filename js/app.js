@@ -184,6 +184,8 @@ function calcXp(completion, reflection, nextStreak, alreadyChecked) {
 
 let state = load();
 let archiveFilter = 'all';
+let archiveSort = 'newest';
+let archiveCategory = 'all';
 ensureToday(state);
 save(state);
 
@@ -196,7 +198,8 @@ function renderArchive() {
   const items = Object.entries(state.days)
     .filter(([, v]) => v.checkedIn)
     .filter(([, v]) => (archiveFilter === 'favorites' ? v.favorited : true))
-    .sort((a, b) => Number(b[0]) - Number(a[0]));
+    .filter(([, v]) => (archiveCategory === 'all' ? true : v.task.category === archiveCategory))
+    .sort((a, b) => (archiveSort === 'newest' ? Number(b[0]) - Number(a[0]) : Number(a[0]) - Number(b[0])));
 
   document.getElementById('filterAll').setAttribute('aria-pressed', archiveFilter === 'all');
   document.getElementById('filterFav').setAttribute('aria-pressed', archiveFilter === 'favorites');
@@ -227,6 +230,32 @@ function renderArchive() {
       renderArchive();
     })
   );
+}
+
+function renderArchiveControls() {
+  const root = document.getElementById('archiveControls');
+  root.innerHTML = `
+    <select id="archiveSort" class="px-3 py-1 rounded-full border border-line bg-surface text-sm">
+      <option value="newest">最新優先</option>
+      <option value="oldest">最舊優先</option>
+    </select>
+    <select id="archiveCategory" class="px-3 py-1 rounded-full border border-line bg-surface text-sm">
+      <option value="all">全部分類</option>
+      ${categories.map((c) => `<option value="${c}">${c}</option>`).join('')}
+    </select>
+  `;
+  const sort = document.getElementById('archiveSort');
+  const category = document.getElementById('archiveCategory');
+  sort.value = archiveSort;
+  category.value = archiveCategory;
+  sort.addEventListener('change', () => {
+    archiveSort = sort.value;
+    renderArchive();
+  });
+  category.addEventListener('change', () => {
+    archiveCategory = category.value;
+    renderArchive();
+  });
 }
 
 function renderDayDetail(day) {
@@ -304,6 +333,26 @@ function render() {
     mixRoot.appendChild(row);
   });
 
+  const trendRoot = document.getElementById('weeklyTrend');
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = day - (6 - i);
+    const entry = state.days[d];
+    if (!entry || !entry.checkedIn) return { label: `D${d}`, score: 0 };
+    const base = entry.taskCompletion === 'done' ? 3 : entry.taskCompletion === 'partial' ? 2 : 1;
+    return { label: `D${d}`, score: base + (entry.reflection ? 1 : 0) };
+  });
+  trendRoot.innerHTML = '';
+  last7.forEach((point) => {
+    const row = document.createElement('div');
+    row.className = 'space-y-1';
+    row.innerHTML = `<div class="text-[10px] text-textSub">${point.label}</div><div class="h-12 bg-line rounded flex items-end"><div class="w-full bg-primaryDeep rounded" style="height:${point.score * 20}%"></div></div>`;
+    trendRoot.appendChild(row);
+  });
+  const strongDays = last7.filter((p) => p.score >= 3).length;
+  document.getElementById('trendFeedback').textContent =
+    strongDays >= 4 ? '這週節奏很穩，妳正在把改變變成習慣。' : '先把每次 check-in 做小做穩，趨勢就會慢慢拉起來。';
+
+  renderArchiveControls();
   renderArchive();
 }
 
@@ -412,6 +461,11 @@ function importStateFromFile(file) {
       const parsed = JSON.parse(String(reader.result));
       if (!validateImportedState(parsed)) throw new Error('invalid-format');
       const normalized = normalizeState(parsed);
+      const previewNode = document.getElementById('importPreview');
+      const previewText = `將匯入：Day 紀錄 ${Object.keys(normalized.days).length} 筆、已完成 ${normalized.progress.completedDays} 天、目前 ${normalized.progress.totalXP} XP。`;
+      previewNode.textContent = previewText;
+      previewNode.classList.remove('hidden');
+      if (!confirm(`${previewText}\n\n確認覆蓋目前資料？`)) return;
       normalized.meta.schemaVersion = SCHEMA_VERSION;
       state = normalized;
       ensureToday(state);
