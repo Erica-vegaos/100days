@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fff8fb" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <title>Future Her: 100</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg: '#FFF8FB',
+              surface: '#FFFFFF',
+              surfaceSoft: '#FFF2F7',
+              primary: '#DFA3BA',
+              primaryDeep: '#C97C9E',
+              secondary: '#CBBBEA',
+              accent: '#F1D3B8',
+              textMain: '#2F2730',
+              textSub: '#7A6D78',
+              line: '#F0E4EC',
+              success: '#BFD8C8'
+            },
+            boxShadow: {
+              card: '0 8px 24px rgba(189, 141, 165, 0.12)'
+            }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-bg text-textMain min-h-screen">
+    <main class="max-w-md mx-auto pb-24 px-4 pt-6">
+      <section id="home" class="page space-y-4">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-semibold">Future Her: 100</h1>
+          <span id="dayLabel" class="text-sm text-textSub"></span>
+        </div>
+        <div class="w-full bg-line rounded-full h-2">
+          <div id="progressBar" class="h-2 rounded-full bg-gradient-to-r from-primary to-secondary" style="width: 1%"></div>
+        </div>
+
+        <article class="bg-surface rounded-2xl p-4 shadow-card border border-line">
+          <p class="text-sm text-textSub mb-1">Future Self Message</p>
+          <p id="todayMessage" class="leading-relaxed"></p>
+        </article>
+
+        <article class="bg-surface rounded-2xl p-4 shadow-card border border-line space-y-3">
+          <p class="text-sm text-textSub">今日小任務</p>
+          <h2 id="todayTask" class="font-medium"></h2>
+          <button data-nav="checkin" class="w-full h-12 rounded-full text-white bg-gradient-to-r from-primary to-secondary">Start Check-in</button>
+        </article>
+
+        <div class="grid grid-cols-2 gap-3">
+          <article class="bg-surface rounded-2xl p-4 border border-line">
+            <p class="text-xs text-textSub">Streak</p>
+            <p id="streakText" class="text-xl font-semibold">🔥 0</p>
+          </article>
+          <article class="bg-surface rounded-2xl p-4 border border-line">
+            <p class="text-xs text-textSub">Level / XP</p>
+            <p id="xpText" class="text-xl font-semibold">Lv.1 · 0 XP</p>
+          </article>
+        </div>
+
+        <article class="bg-surface rounded-2xl p-4 border border-line">
+          <p class="text-xs text-textSub">Today Status</p>
+          <p id="todayStatus" class="font-medium mt-1">尚未 check-in</p>
+          <p id="nextStepHint" class="text-xs text-textSub mt-1">先完成今天 check-in，維持節奏。</p>
+        </article>
+      </section>
+
+      <section id="checkin" class="page hidden space-y-4">
+        <h2 class="text-xl font-semibold">Daily Check-in</h2>
+        <div class="bg-surface rounded-2xl p-4 border border-line space-y-4">
+          <div>
+            <p class="text-sm text-textSub mb-2">今日狀態（1-5）</p>
+            <div class="flex items-center gap-3">
+              <input id="mood" type="range" min="1" max="5" value="3" class="w-full" />
+              <span id="moodLabel" class="text-sm font-medium w-5 text-right">3</span>
+            </div>
+          </div>
+          <div>
+            <p class="text-sm text-textSub mb-2">任務完成程度</p>
+            <select id="completion" class="w-full border border-line rounded-xl p-2 bg-white">
+              <option value="none">未做</option>
+              <option value="partial">部分完成</option>
+              <option value="done">完成</option>
+            </select>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-sm text-textSub">一句反思</p>
+              <p id="reflectionCount" class="text-xs text-textSub">0/120</p>
+            </div>
+            <textarea id="reflection" maxlength="120" rows="3" class="w-full border border-line rounded-xl p-2" placeholder="今天的妳，有哪一刻更接近理想中的自己？"></textarea>
+          </div>
+          <button id="submitCheckin" class="w-full h-12 rounded-full text-white bg-gradient-to-r from-primary to-secondary">Complete Today</button>
+          <p class="text-xs text-textSub">同一天可重填，將以最後一次內容覆蓋。</p>
+        </div>
+      </section>
+
+      <section id="map" class="page hidden space-y-4">
+        <h2 class="text-xl font-semibold">Growth Map</h2>
+        <div class="grid grid-cols-3 gap-3 text-xs">
+          <p class="bg-surface rounded-xl border border-line p-2">完成天數：<span id="completedDaysText">0</span></p>
+          <p class="bg-surface rounded-xl border border-line p-2">當前 Streak：<span id="currentStreakText">0</span></p>
+          <p class="bg-surface rounded-xl border border-line p-2">最長 Streak：<span id="longestStreakText">0</span></p>
+        </div>
+        <div id="heatmap" class="grid grid-cols-10 gap-1"></div>
+        <article id="dayDetail" class="bg-surface rounded-xl border border-line p-3 text-sm text-textSub">
+          點擊 heatmap 任一天，可查看當日摘要。
+        </article>
+
+      </section>
+
+      <section id="stats" class="page hidden space-y-3">
+        <h2 class="text-xl font-semibold">Persona Stats</h2>
+        <div id="statsList" class="space-y-2"></div>
+        <article class="bg-surface rounded-xl border border-line p-3">
+          <p class="text-sm text-textSub mb-2">最近 7 天投入分佈</p>
+          <div id="weeklyMix" class="space-y-1"></div>
+        </article>
+      </section>
+
+      <section id="archive" class="page hidden space-y-3">
+        <h2 class="text-xl font-semibold">Future Self Archive</h2>
+        <p class="text-sm text-textSub">收藏喜歡的訊息，建立屬於妳的未來語錄庫。</p>
+        <div class="flex gap-2 text-sm">
+          <button id="filterAll" class="px-3 py-1 rounded-full border border-line bg-surface">全部</button>
+          <button id="filterFav" class="px-3 py-1 rounded-full border border-line bg-surface">僅收藏</button>
+        </div>
+        <div id="archiveList" class="space-y-2"></div>
+      </section>
+
+      <section id="settings" class="page hidden space-y-4">
+        <h2 class="text-xl font-semibold">Settings</h2>
+        <article class="bg-surface rounded-2xl p-4 border border-line text-sm space-y-1">
+          <p>版本：<span class="text-textSub">MVP v1</span></p>
+          <p>資料儲存：<span class="text-textSub">LocalStorage</span></p>
+        </article>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <button id="exportData" class="h-11 rounded-xl border border-line bg-white text-sm">Export JSON</button>
+          <button id="importDataBtn" class="h-11 rounded-xl border border-line bg-white text-sm">Import JSON</button>
+          <input id="importDataInput" type="file" accept="application/json" class="hidden" />
+        </div>
+
+        <button id="resetData" class="w-full h-12 rounded-full border border-line bg-white">Reset 100 Days Data</button>
+      </section>
+    </main>
+
+    <div id="successModal" class="hidden fixed inset-0 bg-black/40 px-6 flex items-center justify-center">
+      <article class="max-w-sm w-full bg-white rounded-2xl p-5 shadow-card border border-line text-center space-y-2">
+        <p class="text-sm text-textSub">Future Her is proud of you.</p>
+        <h3 class="text-xl font-semibold">Check-in Completed</h3>
+        <p id="successSummary" class="text-sm"></p>
+        <button id="closeSuccess" class="w-full h-11 rounded-full text-white bg-gradient-to-r from-primary to-secondary">Continue</button>
+      </article>
+    </div>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-line">
+      <div class="max-w-md mx-auto grid grid-cols-6">
+        <button data-nav="home" class="py-3 text-sm">Home</button>
+        <button data-nav="checkin" class="py-3 text-sm">Check</button>
+        <button data-nav="map" class="py-3 text-sm">Map</button>
+        <button data-nav="stats" class="py-3 text-sm">Stats</button>
+        <button data-nav="archive" class="py-3 text-sm">Archive</button>
+        <button data-nav="settings" class="py-3 text-sm">Set</button>
+      </div>
+    </nav>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
