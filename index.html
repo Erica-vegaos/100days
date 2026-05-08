@@ -123,6 +123,11 @@
           <p class="text-sm text-textSub mb-2">最近 7 天投入分佈</p>
           <div id="weeklyMix" class="space-y-1"></div>
         </article>
+        <article class="bg-surface rounded-xl border border-line p-3">
+          <p class="text-sm text-textSub mb-2">最近 7 天趨勢</p>
+          <div id="weeklyTrend" class="grid grid-cols-7 gap-1"></div>
+          <p id="trendFeedback" class="text-xs text-textSub mt-2"></p>
+        </article>
       </section>
 
       <section id="archive" class="page hidden space-y-3">
@@ -132,6 +137,7 @@
           <button id="filterAll" class="px-3 py-1 rounded-full border border-line bg-surface">全部</button>
           <button id="filterFav" class="px-3 py-1 rounded-full border border-line bg-surface">僅收藏</button>
         </div>
+        <div id="archiveControls" class="flex gap-2 text-sm"></div>
         <div id="archiveList" class="space-y-2"></div>
       </section>
 
@@ -147,6 +153,7 @@
           <button id="importDataBtn" class="h-11 rounded-xl border border-line bg-white text-sm">Import JSON</button>
           <input id="importDataInput" type="file" accept="application/json" class="hidden" />
         </div>
+        <p id="importPreview" class="hidden text-xs text-textSub bg-surface rounded-xl border border-line p-3"></p>
 
         <button id="resetData" class="w-full h-12 rounded-full border border-line bg-white">Reset 100 Days Data</button>
       </section>
