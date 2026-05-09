@@ -329,3 +329,28 @@ Check-in → XP → 人格值成長 → 稱號/里程碑解鎖
 - 不做社群功能
 - 不做複雜動畫
 
+
+---
+
+## 最快看 HTML 的方法（不必公開 repo）
+
+如果你只是想「最快打開看畫面」，建議用本機靜態伺服器：
+
+1. 在專案根目錄執行：`python3 -m http.server 4173`
+2. 瀏覽器打開：`http://localhost:4173`
+
+### 其他可用方式
+
+- VS Code Live Server（最快點擊式）
+- `npx serve .`（Node 環境）
+- `npx vercel --yes` 或 Cloudflare Pages（可分享連結）
+
+### 要不要把 repo 設為公開？
+
+不建議為了預覽而公開。這個專案雖是前端靜態站，但仍可能包含：
+
+- 產品構想與未發佈 roadmap
+- 你不想曝光的實驗內容
+- 日後可能加入的敏感設定
+
+如果只是你自己看或少數人驗收，**本機預覽或 private deploy**（例如 Vercel private project）通常就夠了。
