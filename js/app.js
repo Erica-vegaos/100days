@@ -29,6 +29,14 @@ const titles = [
 
 const statsKeys = [...categories];
 const completionLabel = { none: '未做', partial: '部分完成', done: '完成' };
+const statDisplay = {
+  clarity: 'Clarity / 洞察',
+  discipline: 'Discipline / 自律',
+  glow: 'Glow / 光感',
+  calmness: 'Calmness / 穩定',
+  confidence: 'Confidence / 自信',
+  energy: 'Energy / 能量'
+};
 
 function localDateISO() {
   const now = new Date();
@@ -181,6 +189,58 @@ function calcXp(completion, reflection, nextStreak, alreadyChecked) {
   if (!alreadyChecked && nextStreak % 7 === 0) xp += 10;
   return xp;
 }
+function getPersonaPhase(day, streak) {
+  if (day <= 3) return 'Seed Phase';
+  if (day <= 7) return 'Sync Phase';
+  if (day <= 14) return 'Stability Phase';
+  return streak >= 15 ? 'Embodiment Phase' : 'Embodiment Phase';
+}
+function getVisualPhase(day, streak, level) {
+  const phases = [
+    { name: 'Soft Dawn', gradient: 'bg-gradient-to-br from-rose-200 via-purple-100 to-amber-100', subtitle: 'Morning system calibration in progress.', label: 'soft breathing loop', bg: 'bg-gradient-to-b from-rose-50 via-purple-50 to-bg' },
+    { name: 'Rose Orbit', gradient: 'bg-gradient-to-br from-pink-200 via-rose-200 to-purple-100', subtitle: 'Orbit stabilized. You returned to your path.', label: 'orbit drift active', bg: 'bg-gradient-to-b from-pink-50 via-purple-50 to-bg' },
+    { name: 'Lavender Shield', gradient: 'bg-gradient-to-br from-violet-200 via-purple-200 to-indigo-100', subtitle: 'Protective focus shield is softly online.', label: 'shield pulse', bg: 'bg-gradient-to-b from-violet-50 via-purple-50 to-bg' },
+    { name: 'Golden Recovery', gradient: 'bg-gradient-to-br from-amber-200 via-orange-100 to-rose-100', subtitle: 'Recovery light detected. Rhythm is rebuilding.', label: 'recovery glow', bg: 'bg-gradient-to-b from-amber-50 via-rose-50 to-bg' },
+    { name: 'Future Bloom', gradient: 'bg-gradient-to-br from-fuchsia-200 via-purple-200 to-sky-100', subtitle: 'Future identity field is blooming steadily.', label: 'bloom expansion', bg: 'bg-gradient-to-b from-fuchsia-50 via-purple-50 to-bg' }
+  ];
+  const idx = Math.floor((Math.max(day, streak, level) - 1) / 3) % phases.length;
+  return phases[idx];
+}
+function getStatRank(value) {
+  if (value >= 80) return 'Embodied';
+  if (value >= 60) return 'Radiant';
+  if (value >= 40) return 'Stable';
+  if (value >= 20) return 'Warming';
+  return 'Awakening';
+}
+function getXPProgress(totalXP) {
+  const currentLevelXP = totalXP % 100;
+  return { currentLevelXP, nextLevelXP: 100, percent: currentLevelXP };
+}
+function getHomeMessage(s) {
+  const pool = ['You returned.', 'Small progress detected.', 'Identity stability increased.', 'Future Her is forming.', 'The system remembers your effort.'];
+  return pool[(s.profile.currentDay + s.progress.currentStreak) % pool.length];
+}
+function getUnlockedAchievements(s) {
+  const achievements = [];
+  if (s.progress.completedDays >= 1) achievements.push('First Check-in');
+  if (s.progress.currentStreak >= 3) achievements.push('3-Day Return');
+  if (s.progress.currentStreak >= 7) achievements.push('7-Day Stability Trial');
+  if (Object.values(s.days).some((d) => d.reflection)) achievements.push('First Reflection');
+  if (s.progress.level >= 3) achievements.push('Level 3 Awakening');
+  if (s.progress.completedDays >= 10) achievements.push('10 Days of Becoming');
+  return achievements.slice(-3).reverse();
+}
+function getInnerEnemy(s) {
+  const day = s.profile.currentDay;
+  const recent7 = Array.from({ length: 7 }, (_, i) => s.days[day - i]).filter(Boolean);
+  const strongDays = recent7.filter((d) => d.checkedIn && (d.taskCompletion === 'done' || d.reflection)).length;
+  const weakDays = recent7.filter((d) => !d.checkedIn || d.taskCompletion === 'none').length;
+  const candidates = ['三日放棄怪', '拖延小怪', '混亂霧氣', '自我懷疑影子', '能量低潮獸'];
+  const name = weakDays >= 4 ? candidates[1] : s.progress.currentStreak >= 7 ? candidates[0] : strongDays <= 2 ? candidates[4] : candidates[(day + s.progress.level) % candidates.length];
+  const hp = Math.max(0, 100 - s.progress.currentStreak * 8 - s.progress.completedDays * 2 - strongDays * 4);
+  return { name, hp, reduced: 100 - hp, trial: s.progress.currentStreak >= 7 ? `Streak ${s.progress.currentStreak} 達成：Day 7 Stability Trial cleared` : 'Tiny resistance tracking online' };
+}
 
 let state = load();
 let archiveFilter = 'all';
@@ -277,6 +337,10 @@ function render() {
   ensureToday(state);
   const day = state.profile.currentDay;
   const today = state.days[day];
+  const personaPhase = getPersonaPhase(day, state.progress.currentStreak, state.progress.level);
+  const visualPhase = getVisualPhase(day, state.progress.currentStreak, state.progress.level);
+  const achievements = getUnlockedAchievements(state);
+  const enemy = getInnerEnemy(state);
 
   document.getElementById('dayLabel').textContent = `Day ${day} / 100`;
   document.getElementById('progressBar').style.width = `${day}%`;
@@ -285,6 +349,12 @@ function render() {
   document.getElementById('streakText').textContent = `🔥 ${state.progress.currentStreak}`;
   document.getElementById('xpText').textContent = `Lv.${state.progress.level} · ${state.progress.totalXP} XP`;
   document.getElementById('todayStatus').textContent = today.checkedIn ? `已完成（${completionLabel[today.taskCompletion]}）` : '尚未 check-in';
+  document.getElementById('homeWelcomeMessage').textContent = getHomeMessage(state);
+  document.getElementById('coreStage').textContent = personaPhase;
+  document.getElementById('coreVisualLabel').textContent = `${visualPhase.name} · ${visualPhase.label}`;
+  document.getElementById('coreSubtitle').textContent = visualPhase.subtitle;
+  document.getElementById('coreOrb').className = `orb-core w-36 h-36 rounded-full shadow-glow ${visualPhase.gradient}`;
+  document.getElementById('appBody').className = `text-textMain min-h-screen transition-all duration-700 ${visualPhase.bg}`;
   document.getElementById('nextStepHint').textContent = today.checkedIn
     ? '很棒，明天再回來維持 streak。'
     : hasCompletedAnyDay()
@@ -316,10 +386,24 @@ function render() {
 
   const statsList = document.getElementById('statsList');
   statsList.innerHTML = `<p class="text-sm text-textSub mb-2">${state.progress.title}</p><p class="text-sm text-textSub mb-3">${weeklyInsight()}</p>`;
+  const xpProgress = getXPProgress(state.progress.totalXP);
+  document.getElementById('personaHeader').textContent = `Lv.${state.progress.level} · ${state.progress.title}`;
+  document.getElementById('personaMeta').textContent = `Total XP ${state.progress.totalXP} · Current Phase: ${personaPhase}`;
+  document.getElementById('xpProgressBar').style.width = `${xpProgress.percent}%`;
+  document.getElementById('xpProgressText').textContent = `${xpProgress.currentLevelXP} / ${xpProgress.nextLevelXP} XP to next level`;
+  document.getElementById('enemyStatus').textContent = `你已經削弱了「${enemy.name}」 ${enemy.reduced}%`;
+  document.getElementById('enemyHpBar').style.width = `${enemy.hp}%`;
+  document.getElementById('enemyTrialText').textContent = enemy.trial;
+
+  const achRoot = document.getElementById('achievementList');
+  achRoot.innerHTML = achievements.length
+    ? achievements.map((a) => `<span class="px-3 py-1 rounded-full text-xs bg-white border border-line">${a}</span>`).join('')
+    : '<span class="text-xs text-textSub">First Check-in will unlock your first badge.</span>';
+
   statsKeys.forEach((k) => {
     const v = state.stats[k];
     const row = document.createElement('div');
-    row.innerHTML = `<p class="text-sm mb-1 capitalize">${k} ${v}</p><div class="h-2 bg-line rounded mb-2"><div class="h-2 bg-primary rounded" style="width:${Math.min(v, 100)}%"></div></div>`;
+    row.innerHTML = `<div class="flex items-center justify-between text-sm mb-1"><p>${statDisplay[k]}</p><p>${v} · ${getStatRank(v)}</p></div><div class="h-2 bg-line rounded mb-2"><div class="h-2 bg-primary rounded" style="width:${Math.min(v, 100)}%"></div></div>`;
     statsList.appendChild(row);
   });
 
@@ -439,7 +523,9 @@ document.getElementById('submitCheckin').addEventListener('click', () => {
   render();
   nav('home');
   const deltaSummary = Object.entries(today.statDelta).map(([k, v]) => `${k}+${v}`).join(' · ') || 'no stat gain';
-  showSuccessModal(`+${xp} XP · ${deltaSummary} · Streak ${state.progress.currentStreak}`);
+  const enemy = getInnerEnemy(state);
+  const feedback = ['Your future self felt this one.', 'You cleared a tiny resistance today.', 'Identity stability increased.'][(day + state.progress.level) % 3];
+  showSuccessModal(`+${xp} XP · ${deltaSummary} · Streak ${state.progress.currentStreak} · Inner Enemy HP -${Math.min(14, enemy.reduced)} · ${feedback}`);
 });
 
 

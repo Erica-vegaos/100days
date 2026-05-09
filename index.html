@@ -25,14 +25,26 @@
               success: '#BFD8C8'
             },
             boxShadow: {
-              card: '0 8px 24px rgba(189, 141, 165, 0.12)'
+              card: '0 8px 24px rgba(189, 141, 165, 0.12)',
+              glow: '0 0 40px rgba(223, 163, 186, 0.35)'
             }
           }
         }
       };
     </script>
+    <style>
+      @keyframes orbBreath {
+        0%, 100% { transform: scale(1); opacity: .95; }
+        50% { transform: scale(1.04); opacity: 1; }
+      }
+      @keyframes orbFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-8px); }
+      }
+      .orb-core { animation: orbBreath 4s ease-in-out infinite, orbFloat 6s ease-in-out infinite; }
+    </style>
   </head>
-  <body class="bg-bg text-textMain min-h-screen">
+  <body id="appBody" class="bg-bg text-textMain min-h-screen transition-all duration-700">
     <main class="max-w-md mx-auto pb-24 px-4 pt-6">
       <section id="home" class="page space-y-4">
         <div class="flex items-center justify-between">
@@ -42,6 +54,20 @@
         <div class="w-full bg-line rounded-full h-2">
           <div id="progressBar" class="h-2 rounded-full bg-gradient-to-r from-primary to-secondary" style="width: 1%"></div>
         </div>
+        <article id="futureCoreCard" class="relative overflow-hidden bg-white/70 backdrop-blur rounded-3xl p-5 border border-white/80 shadow-card space-y-3">
+          <p class="text-xs tracking-wider text-textSub uppercase">Future Core / 人格核心</p>
+          <div class="flex items-center justify-center py-3">
+            <div id="coreOrb" class="orb-core w-36 h-36 rounded-full shadow-glow"></div>
+          </div>
+          <div class="text-center space-y-1">
+            <p id="coreStage" class="text-sm font-medium">Seed Phase</p>
+            <p id="coreVisualLabel" class="text-xs text-textSub">Soft Dawn · breathing sync</p>
+            <p id="coreSubtitle" class="text-sm text-textSub">System booting your gentle growth field.</p>
+          </div>
+          <div class="bg-white/70 rounded-2xl border border-line p-3">
+            <p id="homeWelcomeMessage" class="text-sm leading-relaxed">Welcome back.</p>
+          </div>
+        </article>
 
         <article class="bg-surface rounded-2xl p-4 shadow-card border border-line">
           <p class="text-sm text-textSub mb-1">Future Self Message</p>
@@ -69,6 +95,13 @@
           <p class="text-xs text-textSub">Today Status</p>
           <p id="todayStatus" class="font-medium mt-1">尚未 check-in</p>
           <p id="nextStepHint" class="text-xs text-textSub mt-1">先完成今天 check-in，維持節奏。</p>
+        </article>
+        <article class="bg-white/75 backdrop-blur rounded-3xl p-4 border border-white/80">
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-textSub uppercase tracking-wider">Recent Milestones</p>
+            <span class="text-[10px] text-textSub">Achievement Log</span>
+          </div>
+          <div id="achievementList" class="mt-3 flex flex-wrap gap-2"></div>
         </article>
       </section>
 
@@ -118,6 +151,23 @@
 
       <section id="stats" class="page hidden space-y-3">
         <h2 class="text-xl font-semibold">Persona Stats</h2>
+        <article class="bg-white/75 backdrop-blur rounded-3xl border border-white/80 p-4 space-y-2">
+          <p class="text-xs uppercase tracking-wider text-textSub">Persona Class Card</p>
+          <p id="personaHeader" class="font-semibold"></p>
+          <p id="personaMeta" class="text-sm text-textSub"></p>
+          <div class="h-2 bg-line rounded-full">
+            <div id="xpProgressBar" class="h-2 rounded-full bg-gradient-to-r from-primary to-secondary"></div>
+          </div>
+          <p id="xpProgressText" class="text-xs text-textSub"></p>
+        </article>
+        <article class="bg-white/75 backdrop-blur rounded-3xl border border-white/80 p-4">
+          <div class="flex items-center justify-between">
+            <p class="text-xs uppercase tracking-wider text-textSub">Current Inner Enemy</p>
+            <span id="enemyTrialText" class="text-[10px] text-textSub"></span>
+          </div>
+          <p id="enemyStatus" class="text-sm mt-2"></p>
+          <div class="h-2 bg-line rounded-full mt-2"><div id="enemyHpBar" class="h-2 rounded-full bg-gradient-to-r from-secondary to-primary"></div></div>
+        </article>
         <div id="statsList" class="space-y-2"></div>
         <article class="bg-surface rounded-xl border border-line p-3">
           <p class="text-sm text-textSub mb-2">最近 7 天投入分佈</p>
