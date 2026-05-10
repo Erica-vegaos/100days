@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'fh100_app_v1';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const messagesByCategory = {
   clarity: ['先釐清一件最重要的事，今天就會很穩。', '把焦點收回來，妳會更有掌控感。'],
@@ -62,7 +62,9 @@ function createInitialState() {
       title: 'Seed of Her'
     },
     stats: Object.fromEntries(statsKeys.map((k) => [k, 10])),
-    days: {}
+    days: {},
+    journalEntries: [],
+    versionBoard: []
   };
 }
 
@@ -74,7 +76,9 @@ function normalizeState(input) {
     profile: { ...fallback.profile, ...(safe.profile ?? {}) },
     progress: { ...fallback.progress, ...(safe.progress ?? {}) },
     stats: { ...fallback.stats, ...(safe.stats ?? {}) },
-    days: safe.days ?? {}
+    days: safe.days ?? {},
+    journalEntries: Array.isArray(safe.journalEntries) ? safe.journalEntries : [],
+    versionBoard: Array.isArray(safe.versionBoard) ? safe.versionBoard : []
   };
 }
 
@@ -252,6 +256,39 @@ save(state);
 const pages = [...document.querySelectorAll('.page')];
 const nav = (id) => pages.forEach((p) => p.classList.toggle('hidden', p.id !== id));
 document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => nav(b.dataset.nav)));
+
+
+function fileToDataURL(file, onload) {
+  if (!file) return onload('');
+  const reader = new FileReader();
+  reader.onload = () => onload(String(reader.result));
+  reader.readAsDataURL(file);
+}
+
+function renderJournal() {
+  const root = document.getElementById('journalList');
+  const items = [...state.journalEntries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (!items.length) { root.innerHTML = '<p class="text-sm text-textSub">還沒有日記收藏，先新增第一篇吧。</p>'; return; }
+  root.innerHTML = items.map((item) => `
+    <article class="bg-white rounded-2xl border border-line p-3 space-y-2">
+      <div class="flex justify-between text-xs text-textSub"><span>${item.title || '未命名日記'}</span><span>${item.dayLabel}</span></div>
+      <p class="text-sm">${item.content}</p>
+      ${item.image ? `<img src="${item.image}" class="w-full rounded-xl border border-line" alt="journal image" />` : ''}
+    </article>`).join('');
+}
+
+function renderBoard() {
+  const root = document.getElementById('boardList');
+  const cards = [...state.versionBoard].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (!cards.length) { root.innerHTML = '<p class="text-sm text-textSub col-span-2">Version Board 還是空的，先放上第一張未來卡片。</p>'; return; }
+  root.innerHTML = cards.map((card) => `
+    <article class="bg-white rounded-2xl border border-line p-3 space-y-2">
+      <p class="text-xs text-textSub">${card.dayLabel}</p>
+      <h3 class="font-medium text-sm">${card.goal}</h3>
+      <p class="text-xs text-textSub">${card.action}</p>
+      ${card.image ? `<img src="${card.image}" class="w-full h-28 object-cover rounded-xl border border-line" alt="version board image" />` : ''}
+    </article>`).join('');
+}
 
 function renderArchive() {
   const archive = document.getElementById('archiveList');
@@ -438,6 +475,8 @@ function render() {
 
   renderArchiveControls();
   renderArchive();
+  renderJournal();
+  renderBoard();
 }
 
 function showSuccessModal(text) {
@@ -467,6 +506,38 @@ document.getElementById('filterAll').addEventListener('click', () => {
 document.getElementById('filterFav').addEventListener('click', () => {
   archiveFilter = 'favorites';
   renderArchive();
+});
+
+
+
+document.getElementById('addJournalEntry').addEventListener('click', () => {
+  const title = document.getElementById('journalTitle').value.trim();
+  const content = document.getElementById('journalContent').value.trim();
+  if (!content) return alert('請先寫下日記內容');
+  const file = document.getElementById('journalImage').files?.[0];
+  fileToDataURL(file, (image) => {
+    state.journalEntries.push({ title, content, image, createdAt: new Date().toISOString(), dayLabel: `Day ${state.profile.currentDay}` });
+    save(state);
+    document.getElementById('journalTitle').value = '';
+    document.getElementById('journalContent').value = '';
+    document.getElementById('journalImage').value = '';
+    renderJournal();
+  });
+});
+
+document.getElementById('addBoardCard').addEventListener('click', () => {
+  const goal = document.getElementById('boardGoal').value.trim();
+  const action = document.getElementById('boardAction').value.trim();
+  if (!goal) return alert('請先寫下 100 天後想做到的目標');
+  const file = document.getElementById('boardImage').files?.[0];
+  fileToDataURL(file, (image) => {
+    state.versionBoard.push({ goal, action, image, createdAt: new Date().toISOString(), dayLabel: `Day ${state.profile.currentDay}` });
+    save(state);
+    document.getElementById('boardGoal').value = '';
+    document.getElementById('boardAction').value = '';
+    document.getElementById('boardImage').value = '';
+    renderBoard();
+  });
 });
 
 document.getElementById('submitCheckin').addEventListener('click', () => {
