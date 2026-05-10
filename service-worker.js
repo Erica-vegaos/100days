@@ -1,5 +1,5 @@
-const CACHE_NAME = 'fh100-cache-v4';
-const ASSETS = ['/', '/index.html', '/js/app.js?v=4', '/manifest.webmanifest?v=4', '/assets/icons/icon-192.svg', '/assets/icons/icon-512.svg'];
+const CACHE_NAME = 'fh100-cache-v5';
+const ASSETS = ['/', '/index.html', '/js/app.js?v=5', '/manifest.webmanifest?v=5', '/assets/icons/icon-192.svg', '/assets/icons/icon-512.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
