@@ -64,7 +64,8 @@ function createInitialState() {
     stats: Object.fromEntries(statsKeys.map((k) => [k, 10])),
     days: {},
     journalEntries: [],
-    versionBoard: []
+    versionBoard: [],
+    todoTasks: []
   };
 }
 
@@ -78,7 +79,8 @@ function normalizeState(input) {
     stats: { ...fallback.stats, ...(safe.stats ?? {}) },
     days: safe.days ?? {},
     journalEntries: Array.isArray(safe.journalEntries) ? safe.journalEntries : [],
-    versionBoard: Array.isArray(safe.versionBoard) ? safe.versionBoard : []
+    versionBoard: Array.isArray(safe.versionBoard) ? safe.versionBoard : [],
+    todoTasks: Array.isArray(safe.todoTasks) ? safe.todoTasks : []
   };
 }
 
@@ -283,7 +285,22 @@ function buildVisionBoardFromJournal(entries) {
 function fileToDataURL(file, onload) {
   if (!file) return onload('');
   const reader = new FileReader();
-  reader.onload = () => onload(String(reader.result));
+  reader.onload = () => {
+    if (!file.type.startsWith('image/')) return onload(String(reader.result));
+    const img = new Image();
+    img.onload = () => {
+      const maxSize = 1200;
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      onload(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => onload(String(reader.result));
+    img.src = String(reader.result);
+  };
   reader.readAsDataURL(file);
 }
 
@@ -312,6 +329,91 @@ function renderBoard() {
       <p class="text-sm ${card.type === 'headline' ? 'font-semibold' : ''}">${card.text || ''}</p>
     </article>`).join('');
 }
+
+let draggingTodoId = null;
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+function moveTodo(activeId, targetId, insertAfter = false) {
+  if (!activeId || !targetId || activeId === targetId) return;
+  const from = state.todoTasks.findIndex((task) => task.id === activeId);
+  const to = state.todoTasks.findIndex((task) => task.id === targetId);
+  if (from < 0 || to < 0) return;
+  const [item] = state.todoTasks.splice(from, 1);
+  const adjustedTo = from < to ? to - 1 : to;
+  state.todoTasks.splice(adjustedTo + (insertAfter ? 1 : 0), 0, item);
+  save(state);
+  renderTodo();
+}
+
+function renderTodo() {
+  const root = document.getElementById('todoList');
+  if (!root) return;
+  if (!state.todoTasks.length) {
+    root.innerHTML = '<p class="text-sm text-textSub bg-surface border border-line rounded-xl p-3">還沒有 TODO，先新增一件想完成的小事。</p>';
+    return;
+  }
+  root.innerHTML = state.todoTasks.map((task) => `
+    <article data-todo-id="${task.id}" draggable="true" class="todo-item bg-white rounded-xl border border-line p-3 flex items-center gap-2 ${draggingTodoId === task.id ? 'opacity-60' : ''}">
+      <button data-drag-handle="${task.id}" class="cursor-grab select-none px-2 py-1 rounded-lg border border-line text-textSub" aria-label="drag todo">☰</button>
+      <p class="flex-1 min-w-0 text-sm break-words">${escapeHtml(task.text)}</p>
+      <button data-delete-todo="${task.id}" class="px-3 py-1 rounded-lg border border-line text-sm">Delete</button>
+    </article>`).join('');
+
+  root.querySelectorAll('[data-delete-todo]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.todoTasks = state.todoTasks.filter((task) => task.id !== button.dataset.deleteTodo);
+      save(state);
+      renderTodo();
+    });
+  });
+
+  root.querySelectorAll('.todo-item').forEach((item) => {
+    item.addEventListener('dragstart', (event) => {
+      draggingTodoId = item.dataset.todoId;
+      event.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      const rect = item.getBoundingClientRect();
+      moveTodo(draggingTodoId, item.dataset.todoId, event.clientY > rect.top + rect.height / 2);
+    });
+    item.addEventListener('dragend', () => {
+      draggingTodoId = null;
+      renderTodo();
+    });
+  });
+
+  root.querySelectorAll('[data-drag-handle]').forEach((handle) => {
+    handle.addEventListener('pointerdown', (event) => {
+      draggingTodoId = handle.dataset.dragHandle;
+      event.preventDefault();
+    });
+  });
+}
+
+document.addEventListener('pointermove', (event) => {
+  if (!draggingTodoId) return;
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-todo-id]');
+  if (target) {
+    const rect = target.getBoundingClientRect();
+    moveTodo(draggingTodoId, target.dataset.todoId, event.clientY > rect.top + rect.height / 2);
+  }
+});
+
+document.addEventListener('pointerup', () => {
+  if (!draggingTodoId) return;
+  draggingTodoId = null;
+  renderTodo();
+});
+
+document.addEventListener('pointercancel', () => {
+  if (!draggingTodoId) return;
+  draggingTodoId = null;
+  renderTodo();
+});
 
 function renderArchive() {
   const archive = document.getElementById('archiveList');
@@ -500,6 +602,7 @@ function render() {
   renderArchive();
   renderJournal();
   renderBoard();
+  renderTodo();
 }
 
 function showSuccessModal(text) {
@@ -536,8 +639,8 @@ document.getElementById('filterFav').addEventListener('click', () => {
 document.getElementById('addJournalEntry').addEventListener('click', () => {
   const title = document.getElementById('journalTitle').value.trim();
   const content = document.getElementById('journalContent').value.trim();
-  if (!content) return alert('請先寫下日記內容');
   const file = document.getElementById('journalImage').files?.[0];
+  if (!content && !file) return alert('請先寫下日記內容或上傳一張圖片');
   fileToDataURL(file, (image) => {
     state.journalEntries.push({ title, content, image, createdAt: new Date().toISOString(), dayLabel: `Day ${state.profile.currentDay}` });
     save(state);
@@ -546,6 +649,21 @@ document.getElementById('addJournalEntry').addEventListener('click', () => {
     document.getElementById('journalImage').value = '';
     renderJournal();
   });
+});
+
+document.getElementById('addTodo').addEventListener('click', () => {
+  const input = document.getElementById('todoInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const id = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  state.todoTasks.push({ id, text, createdAt: new Date().toISOString() });
+  save(state);
+  input.value = '';
+  renderTodo();
+});
+
+document.getElementById('todoInput').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') document.getElementById('addTodo').click();
 });
 
 document.getElementById('generateVisionBoard').addEventListener('click', () => {
@@ -676,7 +794,7 @@ document.getElementById('resetData').addEventListener('click', () => {
 });
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=5'));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=6'));
 }
 
 render();
