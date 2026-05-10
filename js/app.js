@@ -258,6 +258,28 @@ const nav = (id) => pages.forEach((p) => p.classList.toggle('hidden', p.id !== i
 document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => nav(b.dataset.nav)));
 
 
+
+const stopWords = new Set(['的','了','我','也','很','在','是','和','有','就','都','你','妳','自己','今天','一個','可以','想要','這個','那個']);
+
+function buildVisionBoardFromJournal(entries) {
+  const text = entries.map((e) => `${e.title || ''} ${e.content || ''}`).join(' ');
+  const keywords = (text.match(/[一-龥A-Za-z]{2,}/g) || [])
+    .map((w) => w.trim())
+    .filter((w) => w && !stopWords.has(w))
+    .reduce((acc, w) => ((acc[w] = (acc[w] || 0) + 1), acc), {});
+  const topWords = Object.entries(keywords).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([w]) => w);
+  const topImages = entries.map((e) => e.image).filter(Boolean).slice(-4);
+
+  const generatedCards = [
+    { type: 'headline', title: '100天後的我', text: topWords.length ? topWords.join(' · ') : '穩定 · 自信 · 發光' },
+    { type: 'action', title: '我正在成為', text: `我每天用小步累積，現在已經收集 ${entries.length} 篇日記。` },
+    ...topWords.slice(0, 2).map((word) => ({ type: 'focus', title: `聚焦：${word}`, text: `把「${word}」變成每天看得見的行動。` })),
+    ...topImages.map((image) => ({ type: 'image', image, title: '來自日記的畫面', text: '這是我正在前進的證據。' }))
+  ];
+
+  return { createdAt: new Date().toISOString(), sourceCount: entries.length, cards: generatedCards };
+}
+
 function fileToDataURL(file, onload) {
   if (!file) return onload('');
   const reader = new FileReader();
@@ -279,14 +301,15 @@ function renderJournal() {
 
 function renderBoard() {
   const root = document.getElementById('boardList');
-  const cards = [...state.versionBoard].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  if (!cards.length) { root.innerHTML = '<p class="text-sm text-textSub col-span-2">Version Board 還是空的，先放上第一張未來卡片。</p>'; return; }
-  root.innerHTML = cards.map((card) => `
-    <article class="bg-white rounded-2xl border border-line p-3 space-y-2">
-      <p class="text-xs text-textSub">${card.dayLabel}</p>
-      <h3 class="font-medium text-sm">${card.goal}</h3>
-      <p class="text-xs text-textSub">${card.action}</p>
-      ${card.image ? `<img src="${card.image}" class="w-full h-28 object-cover rounded-xl border border-line" alt="version board image" />` : ''}
+  const [latest] = [...state.versionBoard]
+    .filter((entry) => Array.isArray(entry.cards))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  if (!latest) { root.innerHTML = '<p class="text-sm text-textSub col-span-2">還沒有 Vision Board，先到日記牆累積內容再生成。</p>'; return; }
+  root.innerHTML = latest.cards.map((card) => `
+    <article class="bg-white rounded-2xl border border-line p-3 space-y-2 ${card.type === 'headline' ? 'col-span-2' : ''}">
+      <p class="text-xs text-textSub">${card.title || ''}</p>
+      ${card.image ? `<img src="${card.image}" class="w-full h-28 object-cover rounded-xl border border-line" alt="vision board image" />` : ''}
+      <p class="text-sm ${card.type === 'headline' ? 'font-semibold' : ''}">${card.text || ''}</p>
     </article>`).join('');
 }
 
@@ -525,19 +548,13 @@ document.getElementById('addJournalEntry').addEventListener('click', () => {
   });
 });
 
-document.getElementById('addBoardCard').addEventListener('click', () => {
-  const goal = document.getElementById('boardGoal').value.trim();
-  const action = document.getElementById('boardAction').value.trim();
-  if (!goal) return alert('請先寫下 100 天後想做到的目標');
-  const file = document.getElementById('boardImage').files?.[0];
-  fileToDataURL(file, (image) => {
-    state.versionBoard.push({ goal, action, image, createdAt: new Date().toISOString(), dayLabel: `Day ${state.profile.currentDay}` });
-    save(state);
-    document.getElementById('boardGoal').value = '';
-    document.getElementById('boardAction').value = '';
-    document.getElementById('boardImage').value = '';
-    renderBoard();
-  });
+document.getElementById('generateVisionBoard').addEventListener('click', () => {
+  if (!state.journalEntries.length) return alert('請先在 100天日記牆新增至少一篇內容');
+  const generated = buildVisionBoardFromJournal(state.journalEntries);
+  state.versionBoard = [generated];
+  save(state);
+  document.getElementById('visionBoardHint').textContent = `已生成（來源 ${generated.sourceCount} 篇日記）`;
+  renderBoard();
 });
 
 document.getElementById('submitCheckin').addEventListener('click', () => {
@@ -659,7 +676,7 @@ document.getElementById('resetData').addEventListener('click', () => {
 });
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=5'));
 }
 
 render();
