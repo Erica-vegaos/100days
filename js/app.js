@@ -301,14 +301,25 @@ function renderJournal() {
 
 function renderBoard() {
   const root = document.getElementById('boardList');
-  const latest = state.versionBoard?.[0];
-  if (!latest) { root.innerHTML = '<p class="text-sm text-textSub col-span-2">還沒有 Vision Board，先到日記牆累積內容再生成。</p>'; return; }
-  root.innerHTML = latest.cards.map((card) => `
-    <article class="bg-white rounded-2xl border border-line p-3 space-y-2 ${card.type === 'headline' ? 'col-span-2' : ''}">
-      <p class="text-xs text-textSub">${card.title || ''}</p>
-      ${card.image ? `<img src="${card.image}" class="w-full h-28 object-cover rounded-xl border border-line" alt="vision board image" />` : ''}
-      <p class="text-sm ${card.type === 'headline' ? 'font-semibold' : ''}">${card.text || ''}</p>
-    </article>`).join('');
+  const entries = [...state.versionBoard].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  if (!entries.length) { root.innerHTML = '<p class="text-sm text-textSub col-span-2">還沒有 Vision Board，先新增日記或放上第一張未來卡片。</p>'; return; }
+  root.innerHTML = entries.map((entry) => {
+    if (Array.isArray(entry.cards)) {
+      return entry.cards.map((card) => `
+        <article class="bg-white rounded-2xl border border-line p-3 space-y-2 ${card.type === 'headline' ? 'col-span-2' : ''}">
+          <p class="text-xs text-textSub">${card.title || ''}</p>
+          ${card.image ? `<img src="${card.image}" class="w-full h-28 object-cover rounded-xl border border-line" alt="vision board image" />` : ''}
+          <p class="text-sm ${card.type === 'headline' ? 'font-semibold' : ''}">${card.text || ''}</p>
+        </article>`).join('');
+    }
+    return `
+      <article class="bg-white rounded-2xl border border-line p-3 space-y-2">
+        <p class="text-xs text-textSub">${entry.dayLabel || ''}</p>
+        <h3 class="font-medium text-sm">${entry.goal || ''}</h3>
+        <p class="text-xs text-textSub">${entry.action || ''}</p>
+        ${entry.image ? `<img src="${entry.image}" class="w-full h-28 object-cover rounded-xl border border-line" alt="version board image" />` : ''}
+      </article>`;
+  }).join('');
 }
 
 function renderArchive() {
@@ -549,10 +560,25 @@ document.getElementById('addJournalEntry').addEventListener('click', () => {
 document.getElementById('generateVisionBoard').addEventListener('click', () => {
   if (!state.journalEntries.length) return alert('請先在 100天日記牆新增至少一篇內容');
   const generated = buildVisionBoardFromJournal(state.journalEntries);
-  state.versionBoard = [generated];
+  state.versionBoard = [generated, ...state.versionBoard.filter((entry) => !Array.isArray(entry.cards))];
   save(state);
   document.getElementById('visionBoardHint').textContent = `已生成（來源 ${generated.sourceCount} 篇日記）`;
   renderBoard();
+});
+
+document.getElementById('addBoardCard').addEventListener('click', () => {
+  const goal = document.getElementById('boardGoal').value.trim();
+  const action = document.getElementById('boardAction').value.trim();
+  if (!goal) return alert('請先寫下 100 天後想做到的目標');
+  const file = document.getElementById('boardImage').files?.[0];
+  fileToDataURL(file, (image) => {
+    state.versionBoard.push({ goal, action, image, createdAt: new Date().toISOString(), dayLabel: `Day ${state.profile.currentDay}` });
+    save(state);
+    document.getElementById('boardGoal').value = '';
+    document.getElementById('boardAction').value = '';
+    document.getElementById('boardImage').value = '';
+    renderBoard();
+  });
 });
 
 document.getElementById('submitCheckin').addEventListener('click', () => {
