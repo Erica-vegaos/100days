@@ -1,5 +1,5 @@
-const CACHE_NAME = 'fh100-cache-v3';
-const ASSETS = ['/', '/index.html', '/js/app.js', '/manifest.webmanifest', '/assets/icons/icon-192.svg', '/assets/icons/icon-512.svg'];
+const CACHE_NAME = 'fh100-cache-v4';
+const ASSETS = ['/', '/index.html', '/js/app.js?v=4', '/manifest.webmanifest?v=4', '/assets/icons/icon-192.svg', '/assets/icons/icon-512.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -14,7 +14,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  const isAppShell = url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/js/app.js');
+  const isAppShell = url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/js/app.js') || url.pathname.endsWith('/manifest.webmanifest');
 
   if (isAppShell) {
     event.respondWith(
