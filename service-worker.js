@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fh100-cache-v2';
+const CACHE_NAME = 'fh100-cache-v3';
 const ASSETS = ['/', '/index.html', '/js/app.js', '/manifest.webmanifest', '/assets/icons/icon-192.svg', '/assets/icons/icon-512.svg'];
 
 self.addEventListener('install', (event) => {
@@ -13,5 +13,21 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const isAppShell = url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/js/app.js');
+
+  if (isAppShell) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
